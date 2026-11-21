@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#050c09" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="BLOCKREALM — dunia sandbox voxel 3D terbuka. Bangun, jelajahi, dan taklukkan lembah dengan pencahayaan dinamis, bayangan, refleksi air, dan tekstur piksel 64×64." />
+    <title>BLOCKREALM — Dunia Voxel 3D Tanpa Batas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <style>
+      html, body { margin: 0; height: 100%; background: #040a07; overflow: hidden; }
+      #boot-screen {
+        position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 18px; text-align: center;
+        background: radial-gradient(700px 420px at 50% 40%, #10241a, #040a07 70%);
+        color: #eaf7e2; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        padding: 24px;
+      }
+      #boot-screen .cube {
+        width: 64px; height: 64px; border-radius: 14px;
+        background: linear-gradient(160deg, #a7eb76, #5aa84a);
+        box-shadow: 0 14px 40px rgba(120, 220, 120, .35);
+        animation: boot-spin 3.4s ease-in-out infinite;
+      }
+      #boot-screen h1 { font-size: 18px; letter-spacing: .28em; margin: 0; font-weight: 800; }
+      #boot-screen p { margin: 0; font-size: 12px; color: #9db4a6; max-width: 340px; line-height: 1.6; }
+      #boot-screen .bar { width: 220px; height: 4px; border-radius: 999px; background: #10241a; overflow: hidden; }
+      #boot-screen .bar i { display: block; height: 100%; width: 40%; border-radius: 999px; background: linear-gradient(90deg, #a7eb76, #6ec049); animation: boot-slide 1.4s ease-in-out infinite; }
+      #boot-error {
+        display: none; position: fixed; inset: 0; z-index: 10000; overflow: auto;
+        background: #08120d; color: #eaf7e2; padding: 28px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6;
+      }
+      #boot-error h2 { font-family: system-ui, sans-serif; color: #ffb4a2; font-size: 16px; margin: 0 0 8px; }
+      #boot-error pre { white-space: pre-wrap; word-break: break-word; color: #bcd3c5; }
+      #boot-error button {
+        margin-top: 16px; padding: 10px 16px; border-radius: 10px; border: 0; cursor: pointer;
+        background: #a7eb76; color: #10240f; font-weight: 800; font-family: system-ui, sans-serif;
+      }
+      @keyframes boot-spin { 0%,100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.06); } }
+      @keyframes boot-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-screen">
+        <div class="cube"></div>
+        <h1>BLOCKREALM</h1>
+        <p>Menyiapkan dunia voxel 3D…</p>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
+    <div id="boot-error" role="alert">
+      <h2>Terjadi kesalahan saat memuat game</h2>
+      <p style="color:#9db4a6;font-family:system-ui,sans-serif;font-size:12px;margin:0 0 10px">
+        Jika ini APK/WebView, pastikan WebGL diaktifkan (Hardware acceleration). Salin pesan di bawah untuk bantuan.
+      </p>
+      <pre id="boot-error-text"></pre>
+      <button onclick="location.reload()">Muat ulang</button>
+      <button style="margin-left:8px;background:#1d3527;color:#d9ffb8" onclick="window.__blockrealmClassicBoot && window.__blockrealmClassicBoot()">Mode kompatibilitas</button>
+      <p style="color:#9db4a6;font-family:system-ui,sans-serif;font-size:11px;margin-top:18px;line-height:1.7">
+        <b style="color:#d9ffb8">Untuk APK:</b><br>
+        1. Pastikan WebView mengaktifkan JavaScript, DOM storage &amp; WebGL (hardware acceleration).<br>
+        2. Jika memakai Android WebView, gunakan <code>WebViewAssetLoader</code> agar aset dilayani dari<br>
+        <code>https://appassets.androidplatform.net/assets/index.html</code> (bukan <code>file://</code>).<br>
+        3. Alternatif cepat: buka file <code>dist/index.html</code> di Chrome Android.
+      </p>
+    </div>
+    <script>
+      (function () {
+        var shown = false;
+        function showError(message) {
+          if (shown) return;
+          shown = true;
+          var el = document.getElementById('boot-error');
+          var txt = document.getElementById('boot-error-text');
+          if (el && txt) {
+            txt.textContent = String(message || 'Kesalahan tidak diketahui');
+            el.style.display = 'block';
+          }
+        }
+        window.addEventListener('error', function (event) {
+          var target = event.target;
+          if (target && target.tagName === 'SCRIPT') return; // font/style load issues are harmless
+          showError((event.message || 'Error') + (event.filename ? '\n' + event.filename + ':' + event.lineno : ''));
+        }, true);
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event.reason;
+          showError(reason && reason.stack ? reason.stack : reason && reason.message ? reason.message : reason);
+        });
+        window.__blockrealmShowError = showError;
+        window.setTimeout(function () {
+          if (window.__BLOCKREALM_BOOTED || document.querySelector('#root canvas')) return;
+          if (window.__blockrealmClassicBoot) window.__blockrealmClassicBoot(true);
+        }, 4000);
+        window.setTimeout(function () {
+          if (!document.querySelector('#root canvas') && document.getElementById('boot-screen')) {
+            var p = document.querySelector('#boot-screen p');
+            if (p) p.textContent = 'Memuat aset dunia… mohon tunggu sebentar.';
+          }
+        }, 12000);
+      })();
+    </script>
+    <noscript>
+      <div style="color:#eaf7e2;padding:24px;font-family:system-ui">Aktifkan JavaScript untuk memainkan BLOCKREALM.</div>
+    </noscript>
+    <script>
+      // ---------------------------------------------------------------------
+      // APK / WebView compatibility loader
+      // Inline ES modules are blocked by many WebViews when the page is opened
+      // from file:// or from a custom scheme. The production bundle is a single
+      // inlined module with no imports, so it can safely be re-executed as a
+      // classic script. That converts "white screen" into a working game.
+      // ---------------------------------------------------------------------
+      (function () {
+        function booted() {
+          return !!(window.__BLOCKREALM_BOOTED || document.querySelector('#root canvas'));
+        }
+        function setHint(text) {
+          var el = document.querySelector('#boot-screen p');
+          if (el) el.textContent = text;
+        }
+        function getModuleCode() {
+          // WebViews may keep the tag as type=module, strip it, or rewrite it.
+          // Pick the largest inline script on the page: that is the game bundle.
+          var best = '';
+          var scripts = document.getElementsByTagName('script');
+          for (var i = 0; i < scripts.length; i++) {
+            var el = scripts[i];
+            var type = (el.getAttribute('type') || '').toLowerCase();
+            if (type === 'application/json' || type === 'text/template') continue;
+            var code = el.textContent || el.innerText || '';
+            if (!code && el.getAttribute('src')) {
+              var src = el.getAttribute('src');
+              try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', src, false);
+                xhr.send(null);
+                if (xhr.status === 200 || xhr.status === 0) code = xhr.responseText;
+              } catch (e) { /* ignore */ }
+            }
+            if (code && code.length > best.length) best = code;
+          }
+          return best.length > 500 ? best : '';
+        }
+
+        var attempts = 0;
+        // Direct execution works on file:// where blob: URLs are blocked.
+        window.__blockrealmClassicBoot = function (force) {
+          if (booted()) return true;
+          if (!force && attempts >= 4) return false;
+          attempts++;
+          var code = getModuleCode();
+          if (!code) {
+            setHint('Bundle tidak ditemukan. Pastikan seluruh isi ZIP (dist) diunggah, bukan sebagian.');
+            return false;
+          }
+          setHint('Menjalankan mode kompatibilitas…');
+          try {
+            // 1) fastest and most compatible: evaluate in global scope
+            (0, eval)(code);
+            if (booted()) return true;
+          } catch (err) {
+            console.warn('[BLOCKREALM] eval fallback failed', err);
+          }
+          try {
+            // 2) function scope (some WebViews dislike global eval)
+            var fn = new Function(code);
+            fn();
+            if (booted()) return true;
+          } catch (err2) {
+            if (window.__blockrealmShowError) {
+              window.__blockrealmShowError(
+                'Gagal memuat engine 3D.\n\n' + (err2 && err2.message ? err2.message : err2) +
+                '\n\nPenyebab umum di APK:\n• WebGL dimatikan pada WebView\n• Halaman dibuka sebagai file:// (gunakan https/WebViewAssetLoader)\n• Halaman diakses tanpa jaringan'
+              );
+            }
+            return false;
+          }
+          return booted();
+        };
+
+        [700, 1800, 3500, 6000].forEach(function (delay) {
+          window.setTimeout(function () {
+            if (!booted()) window.__blockrealmClassicBoot();
+          }, delay);
+        });
+
+        window.addEventListener('load', function () {
+          window.setTimeout(function () {
+            if (booted()) return;
+            var screen = document.getElementById('boot-screen');
+            if (!screen || document.getElementById('compat-btn')) return;
+            setHint('Gagal memulai otomatis. Tekan tombol di bawah untuk mode kompatibilitas.');
+            var btn = document.createElement('button');
+            btn.id = 'compat-btn';
+            btn.textContent = 'Mulai Mode Kompatibilitas';
+            btn.style.cssText = 'margin-top:16px;padding:12px 20px;border-radius:12px;border:0;cursor:pointer;background:#a7eb76;color:#10240f;font-weight:800;font-family:system-ui,sans-serif;font-size:13px';
+            btn.addEventListener('click', function () { window.__blockrealmClassicBoot(true); });
+            var box = screen.querySelector('.bar');
+            if (box) screen.insertBefore(btn, box.nextSibling);
+            else screen.appendChild(btn);
+            window.setTimeout(function () {
+              if (booted()) return;
+              setHint('APK ini belum bisa menjalankan WebGL. Aktifkan hardware acceleration / WebGL pada WebView, atau gunakan mode URL (https) di rfweb2apk, bukan upload file.');
+            }, 2500);
+          }, 300);
+        });
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
